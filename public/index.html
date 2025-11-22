@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Prompt Pilot</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <header class="hero">
+        <p class="eyebrow">Draft to Delivery</p>
+        <h1>Prompt Pilot</h1>
+        <p>
+          Draft prompts, save them locally, and let OpenAI help you reframe them
+          into optimized requests built with prompt engineering best practices.
+        </p>
+      </header>
+
+      <section class="panel" aria-labelledby="draft-entry">
+        <div class="panel-header">
+          <div>
+            <h2 id="draft-entry">Save a Draft Prompt</h2>
+            <p>Describe your idea, context, tone, or constraints.</p>
+          </div>
+          <span class="status" data-status="message">Ready</span>
+        </div>
+        <form id="draft-form">
+          <label for="draft-input" class="sr-only">Draft prompt</label>
+          <textarea
+            id="draft-input"
+            name="draft"
+            placeholder="Start with a rough prompt…"
+            rows="6"
+            required
+          ></textarea>
+          <div class="form-actions">
+            <button type="submit" class="primary" id="save-draft">
+              Save Draft
+            </button>
+            <button type="button" id="optimize-prompt" class="secondary">
+              Optimize &amp; Generate
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="principles-entry">
+        <div class="panel-header">
+          <div>
+            <h2 id="principles-entry">Prompt Principles</h2>
+            <p>Document the guidelines that shape each prompt. The assistant will ask for missing details that are required by these principles.</p>
+          </div>
+          <span class="status" data-principles-status>Idle</span>
+        </div>
+        <form id="principles-form">
+          <label for="principles-input" class="sr-only">Prompt principles</label>
+          <textarea
+            id="principles-input"
+            name="principles"
+            placeholder="One principle per line…"
+            rows="4"
+          ></textarea>
+          <div class="form-actions">
+            <button type="submit" class="primary">Save Principles</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="saved-drafts">
+        <div class="panel-header">
+          <h2 id="saved-drafts">Saved Drafts</h2>
+          <p>Click a draft to load it for refinement.</p>
+        </div>
+        <ul class="draft-list" data-drafts></ul>
+      </section>
+
+      <section class="panel" aria-labelledby="optimization-output">
+        <div class="panel-header">
+          <div>
+            <h2 id="optimization-output">Optimized Prompt</h2>
+            <p>OpenAI returns a structured prompt plus notes about what it improved.</p>
+          </div>
+          <span class="status" data-result-status>Idle</span>
+        </div>
+        <pre class="output" data-output>Use Optimize &amp; Generate to craft a final prompt.</pre>
+      </section>
+    </main>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

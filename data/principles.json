@@ -1,0 +1,8 @@
+[
+  "Create prompt in the following order:",
+  "1. Personal:",
+  "2. Context:",
+  "3. Task:",
+  "4. Output:",
+  "5. Constraint:"
+]

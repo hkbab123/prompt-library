@@ -1,0 +1,23 @@
+{
+  "name": "codex-prompt-chat",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "lint": "node --check server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "prompt",
+    "chat",
+    "openai",
+    "prompt-engineering"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^17.2.3"
+  }
+}
