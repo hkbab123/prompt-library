@@ -48,3 +48,52 @@ Drafts are stored in `data/drafts.json`. Each entry includes an `id`, the `text`
 
 - The project currently uses the `gpt-4o-mini` model; you can change the model name inside `server.js` as needed.
 - If OpenAI returns a non-JSON blob, the raw text is displayed directly in the UI for you to inspect.
+
+---
+
+## Deployment on Coolify via Nixpacks
+
+This is a Node.js HTTP server using ES modules. It serves static files from `./public` and stores JSON data in `./data`.
+Data in `./data` is ephemeral in containers and will be lost on restarts or redeployments.
+
+### Requirements
+- Node.js 18 or newer for local development
+- Environment variables:
+  - `OPENAI_API_KEY` (required)
+  - `PORT` (optional, defaults to 4173)
+
+### Local Development
+```sh
+npm ci
+cp .env.example .env
+# Fill in OPENAI_API_KEY in .env
+npm run dev
+# Visit http://localhost:4173
+```
+
+### Deploy to Coolify (Git Repository + Nixpacks)
+
+1. **Push changes to your Git repository** (GitHub, GitLab, etc.)
+2. **In Coolify**: Create New Application → Git Repository
+3. **Select repository and branch** (e.g., `main` or your deployment branch)
+4. **Builder**: Nixpacks (auto-detected)
+5. **Root directory**: `/` (or your app subdirectory if nested)
+6. **Expose Port**: `4173` (must match the internal app port)
+7. **Environment Variables**:
+   - `OPENAI_API_KEY`: your OpenAI API key
+   - `PORT`: `4173`
+8. **Build & Start Commands**: Leave empty — Nixpacks uses `npm start` automatically
+9. **Deploy** and monitor logs for "Server listening on http://localhost:4173"
+
+### Deployment Notes
+
+- **Data Persistence**: `./data` is NOT persisted across deployments. If you need persistence later, add a Coolify volume and mount it to `/app/data`.
+- **Node Version**: The app requires Node.js ≥18. This is specified in `package.json` and `nixpacks.toml`. If deployment fails due to Node version issues, verify the `engines` field or set `NIXPACKS_NODE_VERSION=18` in Coolify environment variables.
+- **Health Check**: The app listens on the port specified by the `PORT` environment variable. Ensure Coolify's exposed port matches this.
+
+### Troubleshooting
+
+- **Check Coolify logs** for startup messages: "Server listening on..."
+- **Verify `OPENAI_API_KEY`** is set correctly in the service environment variables
+- **Static assets not loading?** Ensure `public/` directory is committed to the repository
+- **Build failures?** Check that `package-lock.json` is committed (required for `npm ci`)

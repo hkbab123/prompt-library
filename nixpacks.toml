@@ -1,0 +1,11 @@
+# Nixpacks configuration for Coolify deployment
+providers = ["node"]
+
+[variables]
+NODE_ENV = "production"
+
+[phases.install]
+cmds = ["npm ci --omit=dev"]
+
+[start]
+cmd = "npm start"
