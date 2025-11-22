@@ -1,4 +1,5 @@
-import http from 'http';
+import express from 'express';
+import cors from 'cors';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -7,160 +8,328 @@ import dotenv from 'dotenv';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '.env') });
+
+const app = express();
 const dataDir = path.join(__dirname, 'data');
-const draftsFile = path.join(dataDir, 'drafts.json');
+const sessionsFile = path.join(dataDir, 'sessions.json');
+const foldersFile = path.join(dataDir, 'folders.json');
 const principlesFile = path.join(dataDir, 'principles.json');
+const draftsFile = path.join(dataDir, 'drafts.json');
 const publicDir = path.join(__dirname, 'public');
 
-const standardChecklist = [
-  'Clarify user identity, intent, and desired outcome',
-  'Set the tone, format, and constraints explicitly',
-  'Surface necessary contextual signals (audience, data, style)',
-  'Ask for step-by-step reasoning or layered responses',
-  'Include examples, validation cues, or guardrails',
-  'Request verification/questions to refine clarity'
-];
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.static(publicDir));
+
+// ============= DATA HELPERS =============
 
 async function ensureStorage() {
   await fs.mkdir(dataDir, { recursive: true });
-  try {
-    await fs.access(draftsFile);
-  } catch {
-    await fs.writeFile(draftsFile, '[]', 'utf8');
-  }
-  try {
-    await fs.access(principlesFile);
-  } catch {
-    await fs.writeFile(principlesFile, '[]', 'utf8');
+  
+  const files = [
+    { path: sessionsFile, default: '[]' },
+    { path: foldersFile, default: '[]' },
+    { path: principlesFile, default: '[]' }
+  ];
+
+  for (const file of files) {
+    try {
+      await fs.access(file.path);
+    } catch {
+      await fs.writeFile(file.path, file.default, 'utf8');
+    }
   }
 }
 
-async function readDrafts() {
+async function readJson(filePath) {
   try {
-    const raw = await fs.readFile(draftsFile, 'utf8');
+    const raw = await fs.readFile(filePath, 'utf8');
     return JSON.parse(raw);
   } catch (err) {
-    console.error('Failed reading drafts:', err);
-    await fs.writeFile(draftsFile, '[]', 'utf8');
-    return [];
+    console.error(`Failed reading ${filePath}:`, err);
+    return filePath === principlesFile ? [] : [];
   }
 }
 
-async function writeDrafts(drafts) {
-  await fs.writeFile(draftsFile, JSON.stringify(drafts, null, 2), 'utf8');
+async function writeJson(filePath, data) {
+  const tmpPath = `${filePath}.tmp`;
+  await fs.writeFile(tmpPath, JSON.stringify(data, null, 2), 'utf8');
+  await fs.rename(tmpPath, filePath);
 }
 
-async function readPrinciples() {
+// ============= SESSIONS APIs =============
+
+app.get('/api/sessions', async (req, res) => {
   try {
-    const raw = await fs.readFile(principlesFile, 'utf8');
-    return JSON.parse(raw);
+    const sessions = await readJson(sessionsFile);
+    const activeSessions = sessions
+      .filter(s => !s.archived)
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+      .map(({ id, title, createdAt, updatedAt, archived }) => ({
+        id, title, createdAt, updatedAt, archived
+      }));
+    res.json({ sessions: activeSessions });
   } catch (err) {
-    console.error('Failed reading principles:', err);
-    await fs.writeFile(principlesFile, '[]', 'utf8');
-    return [];
+    res.status(500).json({ error: err.message });
   }
-}
+});
 
-async function writePrinciples(principles) {
-  await fs.writeFile(principlesFile, JSON.stringify(principles, null, 2), 'utf8');
-}
-
-async function collectRequestBody(req) {
-  const chunks = [];
-  for await (const chunk of req) {
-    chunks.push(chunk);
-  }
-  if (!chunks.length) {
-    return {};
-  }
-
-  const raw = Buffer.concat(chunks).toString('utf8');
+app.post('/api/sessions', async (req, res) => {
   try {
-    return JSON.parse(raw);
+    const sessions = await readJson(sessionsFile);
+    const now = new Date().toISOString();
+    const newSession = {
+      id: randomUUID(),
+      title: 'New Chat',
+      createdAt: now,
+      updatedAt: now,
+      archived: false,
+      messages: []
+    };
+    sessions.push(newSession);
+    await writeJson(sessionsFile, sessions);
+    res.status(201).json({ session: newSession });
   } catch (err) {
-    throw new Error('Payload is not valid JSON.');
+    res.status(500).json({ error: err.message });
   }
-}
+});
 
-function respondJson(res, status, body) {
-  const payload = typeof body === 'string' ? body : JSON.stringify(body);
-  res.writeHead(status, { 'Content-Type': 'application/json' });
-  res.end(payload);
-}
-
-function mapContentType(ext) {
-  switch (ext) {
-    case '.js':
-      return 'application/javascript; charset=utf-8';
-    case '.css':
-      return 'text/css; charset=utf-8';
-    case '.json':
-      return 'application/json; charset=utf-8';
-    default:
-      return 'text/html; charset=utf-8';
-  }
-}
-
-async function serveStatic(pathname, res) {
-  const requested = pathname === '/' ? '/index.html' : pathname;
-  const safe = path.normalize(path.join(publicDir, requested));
-  if (!safe.startsWith(publicDir)) {
-    res.writeHead(403);
-    res.end('Forbidden');
-    return;
-  }
-
+app.get('/api/sessions/:id', async (req, res) => {
   try {
-    const data = await fs.readFile(safe);
-    res.writeHead(200, { 'Content-Type': mapContentType(path.extname(safe)) });
-    res.end(data);
+    const sessions = await readJson(sessionsFile);
+    const session = sessions.find(s => s.id === req.params.id);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+    res.json({ session });
   } catch (err) {
-    res.writeHead(404);
-    res.end('Not found');
+    res.status(500).json({ error: err.message });
   }
-}
+});
 
-async function optimizeDraftMessage(draftText, principles = []) {
-  if (!draftText || !draftText.trim()) {
-    throw new Error('Draft text is required for optimization.');
+app.post('/api/sessions/:id/messages', async (req, res) => {
+  try {
+    const { content } = req.body;
+    if (!content?.trim()) {
+      return res.status(400).json({ error: 'Message content is required' });
+    }
+
+    const sessions = await readJson(sessionsFile);
+    const session = sessions.find(s => s.id === req.params.id);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    const now = new Date().toISOString();
+    const userMessage = {
+      id: randomUUID(),
+      role: 'user',
+      content: content.trim(),
+      timestamp: now
+    };
+
+    session.messages.push(userMessage);
+
+    // Get principles
+    const principles = await readJson(principlesFile);
+
+    // Call OpenAI with conversation history
+    const assistantContent = await optimizeWithHistory(
+      session.messages,
+      content.trim(),
+      principles
+    );
+
+    const assistantMessage = {
+      id: randomUUID(),
+      role: 'assistant',
+      content: assistantContent,
+      timestamp: new Date().toISOString()
+    };
+
+    session.messages.push(assistantMessage);
+    session.updatedAt = assistantMessage.timestamp;
+
+    // Auto-generate title from first user message
+    if (session.messages.filter(m => m.role === 'user').length === 1) {
+      const words = content.trim().split(/\s+/).slice(0, 8).join(' ');
+      session.title = words.length > 50 ? words.slice(0, 50) + '...' : words;
+    }
+
+    await writeJson(sessionsFile, sessions);
+
+    res.json({
+      userMessage,
+      assistantMessage,
+      session: {
+        id: session.id,
+        title: session.title,
+        updatedAt: session.updatedAt
+      }
+    });
+  } catch (err) {
+    console.error('Message error:', err);
+    res.status(500).json({ error: err.message });
   }
+});
 
+app.put('/api/sessions/:id/archive', async (req, res) => {
+  try {
+    const { archived } = req.body;
+    const sessions = await readJson(sessionsFile);
+    const session = sessions.find(s => s.id === req.params.id);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    session.archived = archived === true;
+    session.updatedAt = new Date().toISOString();
+    await writeJson(sessionsFile, sessions);
+
+    res.json({ session });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============= FOLDERS APIs =============
+
+app.get('/api/folders', async (req, res) => {
+  try {
+    const folders = await readJson(foldersFile);
+    res.json({ folders });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/folders', async (req, res) => {
+  try {
+    const { id, name, parentId } = req.body;
+    if (!name?.trim()) {
+      return res.status(400).json({ error: 'Folder name is required' });
+    }
+
+    const folders = await readJson(foldersFile);
+
+    if (id) {
+      // Update existing folder
+      const folder = folders.find(f => f.id === id);
+      if (!folder) {
+        return res.status(404).json({ error: 'Folder not found' });
+      }
+      folder.name = name.trim();
+      if (parentId !== undefined) folder.parentId = parentId;
+      await writeJson(foldersFile, folders);
+      return res.json({ folder });
+    }
+
+    // Create new folder
+    const newFolder = {
+      id: randomUUID(),
+      name: name.trim(),
+      parentId: parentId || null,
+      prompts: [],
+      createdAt: new Date().toISOString()
+    };
+
+    folders.push(newFolder);
+    await writeJson(foldersFile, folders);
+    res.status(201).json({ folder: newFolder });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/folders/:id/prompts', async (req, res) => {
+  try {
+    const { title, content } = req.body;
+    if (!content?.trim()) {
+      return res.status(400).json({ error: 'Prompt content is required' });
+    }
+
+    const folders = await readJson(foldersFile);
+    const folder = folders.find(f => f.id === req.params.id);
+    if (!folder) {
+      return res.status(404).json({ error: 'Folder not found' });
+    }
+
+    const prompt = {
+      id: randomUUID(),
+      title: title?.trim() || content.trim().slice(0, 50),
+      content: content.trim(),
+      createdAt: new Date().toISOString()
+    };
+
+    folder.prompts = folder.prompts || [];
+    folder.prompts.push(prompt);
+    await writeJson(foldersFile, folders);
+
+    res.status(201).json({ prompt });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============= PRINCIPLES APIs =============
+
+app.get('/api/principles', async (req, res) => {
+  try {
+    const principles = await readJson(principlesFile);
+    res.json({ principles });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/principles', async (req, res) => {
+  try {
+    const raw = req.body?.principles;
+    let entries = [];
+    if (typeof raw === 'string') {
+      entries = raw.split('\n').map(item => item.trim()).filter(Boolean);
+    } else if (Array.isArray(raw)) {
+      entries = raw.map(item => item?.toString().trim()).filter(Boolean);
+    }
+    await writeJson(principlesFile, entries);
+    res.json({ principles: entries });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============= OPENAI INTEGRATION =============
+
+async function optimizeWithHistory(history, latestMessage, principles = []) {
   const key = process.env.OPENAI_API_KEY;
   if (!key) {
-    throw new Error('OPENAI_API_KEY is not set in the environment.');
+    throw new Error('OPENAI_API_KEY is not set in environment');
   }
 
-  const checklist = standardChecklist
-    .map((item, index) => `${index + 1}. ${item}`)
-    .join('\n');
-
   const normalizedPrinciples = Array.isArray(principles)
-    ? principles.map((text) => text?.toString().trim()).filter(Boolean)
+    ? principles.map(text => text?.toString().trim()).filter(Boolean)
     : [];
-  const principlesSection = normalizedPrinciples.length
-    ? `Principles:\n${normalizedPrinciples
-        .map((item, index) => `${index + 1}. ${item}`)
-        .join('\n')}\n`
-    : '';
-  const clarificationPrompt = normalizedPrinciples.length
-    ? 'If the draft misses any detail required by these principles, ask clarifying questions that call out what is missing before finalizing the prompt.'
-    : 'If the draft feels short on information you would normally expect from a professional prompt, ask for clarifications before finalizing.';
 
-  const payload = {
-    model: 'gpt-4o-mini',
-    temperature: 0.25,
-    top_p: 0.85,
-    messages: [
-      {
-        role: 'system',
-        content: `You are a prompt engineer that packages drafts into structured prompts. Follow this checklist when you reformulate prompts:\n${checklist}\n${principlesSection}${clarificationPrompt}`
-      },
-      {
-        role: 'user',
-        content: `Refine the following draft prompt into a production-ready prompt. Highlight how each standard technique was respected and include a final prompt that can be delivered directly to the model. Respond with a JSON object like {"finalPrompt": "...", "notes": "..."}. Draft:\n${draftText}`
-      }
-    ]
-  };
+  const principlesSection = normalizedPrinciples.length
+    ? `\n\nPrinciples to follow:\n${normalizedPrinciples.map((item, i) => `${i + 1}. ${item}`).join('\n')}`
+    : '';
+
+  const systemPrompt = `You are a prompt engineering assistant that helps users refine and optimize their prompts. 
+Follow these guidelines:
+1. Clarify user identity, intent, and desired outcome
+2. Set the tone, format, and constraints explicitly
+3. Surface necessary contextual signals
+4. Ask for step-by-step reasoning when needed
+5. Include examples and validation cues
+6. Request verification or ask clarifying questions${principlesSection}
+
+If the user's prompt is missing critical information, ask clarifying questions. Otherwise, provide an optimized, production-ready version of their prompt.`;
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...history.slice(-10).map(m => ({ role: m.role, content: m.content }))
+  ];
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -168,7 +337,11 @@ async function optimizeDraftMessage(draftText, principles = []) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${key}`
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      temperature: 0.7,
+      messages
+    })
   });
 
   if (!response.ok) {
@@ -177,117 +350,64 @@ async function optimizeDraftMessage(draftText, principles = []) {
   }
 
   const body = await response.json();
-  const message = body?.choices?.[0]?.message?.content?.trim();
-  return {
-    raw: message ?? 'No response returned from OpenAI.',
-    usage: body?.usage ?? null
-  };
+  return body?.choices?.[0]?.message?.content?.trim() || 'No response from OpenAI.';
 }
 
+// ============= DATA MIGRATION =============
 
-const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, 'http://localhost');
-  const path = url.pathname;
-
+async function migrateOldDrafts() {
   try {
-    if (path === '/api/drafts' && req.method === 'GET') {
-      const drafts = await readDrafts();
-      respondJson(res, 200, { drafts });
-      return;
-    }
+    await fs.access(draftsFile);
+    const drafts = await readJson(draftsFile);
+    
+    if (!drafts || drafts.length === 0) return;
 
-    if (path === '/api/drafts' && req.method === 'POST') {
-      let payload;
-      try {
-        payload = await collectRequestBody(req);
-      } catch (err) {
-        respondJson(res, 400, { error: err.message });
-        return;
-      }
-      const text = payload.text?.trim();
-      if (!text) {
-        respondJson(res, 400, { error: 'Draft text cannot be empty.' });
-        return;
-      }
-      const drafts = await readDrafts();
-      const now = new Date().toISOString();
-      const record = {
+    console.log(`Migrating ${drafts.length} old drafts...`);
+
+    const folders = await readJson(foldersFile);
+    let importFolder = folders.find(f => f.name === 'Imported Drafts');
+    
+    if (!importFolder) {
+      importFolder = {
         id: randomUUID(),
-        text,
-        createdAt: now,
-        updatedAt: now
+        name: 'Imported Drafts',
+        parentId: null,
+        prompts: [],
+        createdAt: new Date().toISOString()
       };
-      drafts.unshift(record);
-      if (drafts.length > 20) {
-        drafts.pop();
-      }
-      await writeDrafts(drafts);
-      respondJson(res, 201, { draft: record });
-      return;
+      folders.push(importFolder);
     }
 
-    if (path === '/api/principles' && req.method === 'GET') {
-      const principles = await readPrinciples();
-      respondJson(res, 200, { principles });
-      return;
+    for (const draft of drafts) {
+      importFolder.prompts.push({
+        id: randomUUID(),
+        title: draft.text.slice(0, 50) + (draft.text.length > 50 ? '...' : ''),
+        content: draft.text,
+        createdAt: draft.createdAt || new Date().toISOString()
+      });
     }
 
-    if (path === '/api/principles' && req.method === 'POST') {
-      let payload;
-      try {
-        payload = await collectRequestBody(req);
-      } catch (err) {
-        respondJson(res, 400, { error: err.message });
-        return;
-      }
-
-      const raw = payload?.principles;
-      let entries = [];
-      if (typeof raw === 'string') {
-        entries = raw.split('\n').map((item) => item.trim()).filter(Boolean);
-      } else if (Array.isArray(raw)) {
-        entries = raw.map((item) => item?.toString().trim()).filter(Boolean);
-      }
-      await writePrinciples(entries);
-      respondJson(res, 200, { principles: entries });
-      return;
-    }
-
-    if (path === '/api/optimize' && req.method === 'POST') {
-      let payload;
-      try {
-        payload = await collectRequestBody(req);
-      } catch (err) {
-        respondJson(res, 400, { error: err.message });
-        return;
-      }
-      try {
-        const principles = await readPrinciples();
-        const result = await optimizeDraftMessage(payload.text, principles);
-        respondJson(res, 200, result);
-        return;
-      } catch (err) {
-        respondJson(res, 422, { error: err.message });
-        return;
-      }
-    }
-
-    if (req.method === 'GET') {
-      await serveStatic(path, res);
-      return;
-    }
-
-    res.writeHead(404);
-    res.end('Route not found');
+    await writeJson(foldersFile, folders);
+    
+    // Rename old drafts file
+    await fs.rename(draftsFile, `${draftsFile}.migrated`);
+    console.log('Migration complete!');
   } catch (err) {
-    console.error(err);
-    respondJson(res, 500, { error: 'Unexpected server error.' });
+    // No drafts file, skip migration
   }
-});
+}
 
-ensureStorage().then(() => {
-  const port = process.env.PORT || 4173;
-  server.listen(port, () => {
-    console.log(`Server listening on http://localhost:${port}`);
+// ============= START SERVER =============
+
+ensureStorage()
+  .then(() => migrateOldDrafts())
+  .then(() => {
+    const port = process.env.PORT || 4173;
+    app.listen(port, () => {
+      console.log(`✨ Prompt Pilot server running on http://localhost:${port}`);
+    });
+  })
+  .catch(err => {
+    console.error('Server startup failed:', err);
+    process.exit(1);
   });
-});

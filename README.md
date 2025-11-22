@@ -1,6 +1,6 @@
 # Prompt Pilot Chat
 
-Prompt Pilot is a small local chat-style project that lets you collect draft prompts, store them locally, and hand them off to OpenAI for a prompt engineering upgrade. It keeps the draft history in `data/drafts.json`, applies a checklist of standard optimization techniques, and surfaces the cleaned prompt plus reasoning.
+Prompt Pilot is a ChatGPT-style conversational interface for prompt engineering. Create chat sessions, optimize prompts with AI assistance, and organize your best prompts in a searchable library. Features a dark futuristic UI with glassmorphism effects and mobile-responsive design.
 
 ## Getting started
 
@@ -22,32 +22,89 @@ Prompt Pilot is a small local chat-style project that lets you collect draft pro
    ```
 5. Open http://localhost:4173 in your browser.
 
+## Features
+
+### Chat Interface
+- **ChatGPT-style conversations**: Create multiple chat sessions with continuous message history
+- **Session management**: Create, resume, archive, and switch between chat sessions
+- **Auto-generated titles**: Sessions automatically get descriptive titles from your first message
+- **Real-time optimization**: AI-powered prompt engineering with conversation context
+
+### Prompt Library
+- **Folder organization**: Create custom folders to organize your best prompts
+- **One-click save**: Save assistant responses directly to your library
+- **Quick access**: Click any saved prompt to copy it to your clipboard
+- **Hierarchical structure**: Organize prompts in user-defined categories
+
+### Prompt Principles
+- **Configurable guidelines**: Set principles that guide AI optimization
+- **Contextual refinement**: AI asks clarifying questions based on your principles
+- **Persistent settings**: Principles are saved and applied to all sessions
+
+### UI/UX
+- **Dark futuristic theme**: Glassmorphism effects with gradient accents
+- **Mobile responsive**: Collapsible sidebar with touch-friendly controls
+- **Keyboard shortcuts**: Enter to send, Shift+Enter for newlines, Esc to close modals
+- **Auto-scroll**: Messages automatically scroll into view
+
 ## How it works
 
-- `server.js` exposes three routes:
-  - `GET /api/drafts` – returns the most recent 20 drafts from `data/drafts.json`.
-  - `POST /api/drafts` – saves a new draft (title, text, timestamp) and keeps the list capped at 20.
-  - `POST /api/optimize` – forwards the provided draft text to `chat/completions` with a prompt-engineering checklist and returns whatever OpenAI responds with.
-- Calls to OpenAI are gated by `OPENAI_API_KEY`.
-- A principles panel lets you record prompt expectations; those principles are fetched and sent with every optimization so the assistant can ask clarifying questions when information is missing.
-- The server loads `.env` via `dotenv` so keys stay local and can be managed alongside your repository.
-- Static assets are served from `public/` so you can open the single-page app from your browser.
+### Backend (Express + Node.js)
+- **Session APIs**: Create, list, load, and archive chat sessions
+- **Message APIs**: Send messages with full conversation context to OpenAI
+- **Folder APIs**: Manage prompt library with folders and saved prompts
+- **Principles APIs**: Store and retrieve prompt engineering principles
+- **Data persistence**: JSON file storage with atomic writes
+- **Migration**: Automatically migrates old drafts to the new folder structure
 
-## Front end workflow
+### Frontend (Vanilla JS)
+- **State management**: Centralized state for sessions, folders, and UI
+- **Real-time updates**: Optimistic UI updates with error handling
+- **Modal system**: Settings, folder creation, and prompt saving dialogs
+- **Toast notifications**: User feedback for actions and errors
 
-1. Capture your draft in the textarea and hit **Save Draft** to persist it locally.
-2. Reopen saved drafts from the list or continue iterating inside the textarea.
-3. Document the principles that must be satisfied—those rules are sent to the optimizer so it can ask for clarifications when the draft is missing required context.
-4. Click **Optimize & Generate** to ask OpenAI to reformulate the draft using structured prompt-engineering techniques. The response is shown in the large output panel.
+### API Endpoints
+
+**Sessions**
+- `GET /api/sessions` - List active sessions
+- `POST /api/sessions` - Create new session
+- `GET /api/sessions/:id` - Load session with messages
+- `POST /api/sessions/:id/messages` - Send message and get AI response
+- `PUT /api/sessions/:id/archive` - Archive session
+
+**Folders**
+- `GET /api/folders` - List all folders with prompts
+- `POST /api/folders` - Create or update folder
+- `POST /api/folders/:id/prompts` - Save prompt to folder
+
+**Principles**
+- `GET /api/principles` - Get saved principles
+- `POST /api/principles` - Save principles
 
 ## Storage
 
-Drafts are stored in `data/drafts.json`. Each entry includes an `id`, the `text`, and timestamps. The server truncates the list to the most recent 20 drafts so the file stays small.
+Data is stored in JSON files in the `data/` directory:
+- `sessions.json` - Chat sessions with full message history
+- `folders.json` - Prompt library structure and saved prompts
+- `principles.json` - Prompt engineering principles
+- `drafts.json.migrated` - Backup of old drafts (if migrated)
 
 ## Notes
 
-- The project currently uses the `gpt-4o-mini` model; you can change the model name inside `server.js` as needed.
-- If OpenAI returns a non-JSON blob, the raw text is displayed directly in the UI for you to inspect.
+- Uses `gpt-4o-mini` model (configurable in `server.js`)
+- Conversation history is maintained for contextual responses
+- Data files use atomic writes (write to .tmp then rename) to prevent corruption
+- Old drafts from previous version are automatically migrated to folders
+
+## Future Enhancements
+
+- Streaming AI responses for real-time feedback
+- Markdown rendering for formatted assistant messages
+- Drag-and-drop to reorganize prompts between folders
+- Session rename functionality
+- Export/import sessions and library
+- Search functionality across sessions and library
+- Keyboard navigation for sidebar items
 
 ---
 

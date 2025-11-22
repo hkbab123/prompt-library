@@ -1,91 +1,218 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Prompt Pilot</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <main class="layout">
-      <header class="hero">
-        <p class="eyebrow">Draft to Delivery</p>
-        <h1>Prompt Pilot</h1>
-        <p>
-          Draft prompts, save them locally, and let OpenAI help you reframe them
-          into optimized requests built with prompt engineering best practices.
-        </p>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Prompt Pilot - Chat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <h1 class="brand-title">Prompt Pilot</h1>
+          <p class="brand-subtitle">AI Prompt Engineering</p>
+        </div>
+        <button class="icon-button settings-button" id="settings-button" aria-label="Settings" title="Settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M12 1v6m0 6v6m0-18a9 9 0 0 1 9 9 9 9 0 0 1-9 9 9 9 0 0 1-9-9 9 9 0 0 1 9-9z"></path>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+
+      <button class="new-chat-button" id="new-chat-button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        New Chat
+      </button>
+
+      <div class="sidebar-section">
+        <h3 class="sidebar-section-title">Recent Chats</h3>
+        <ul class="session-list" id="session-list">
+          <li class="empty-state">No chats yet</li>
+        </ul>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <h3 class="sidebar-section-title">Prompt Library</h3>
+          <button class="icon-button-small" id="add-folder-button" title="Add folder">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+        </div>
+        <ul class="folder-list" id="folder-list">
+          <li class="empty-state">No folders yet</li>
+        </ul>
+      </div>
+
+      <button class="mobile-close" id="mobile-close" aria-label="Close sidebar">×</button>
+    </aside>
+
+    <!-- Main Chat Area -->
+    <main class="chat-container">
+      <button class="mobile-menu-button" id="mobile-menu-button" aria-label="Open menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+
+      <!-- Empty State -->
+      <div class="empty-chat-state" id="empty-state">
+        <div class="empty-state-content">
+          <div class="logo-large">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="url(#gradient)" stroke-width="1.5">
+              <defs>
+                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#7c3aed;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#5eead4;stop-opacity:1" />
+                </linearGradient>
+              </defs>
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              <path d="M8 10h8M8 14h4"></path>
+            </svg>
+          </div>
+          <h2 class="empty-state-title">Start a New Conversation</h2>
+          <p class="empty-state-subtitle">Create a new chat to begin optimizing your prompts with AI assistance</p>
+          <button class="primary-button" id="empty-new-chat">New Chat</button>
+        </div>
+      </div>
+
+      <!-- Chat Header (hidden when no session) -->
+      <header class="chat-header" id="chat-header" style="display: none;">
+        <h2 class="chat-title" id="chat-title">New Chat</h2>
+        <div class="chat-actions">
+          <button class="icon-button" id="archive-button" title="Archive chat">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"></path>
+            </svg>
+          </button>
+        </div>
       </header>
 
-      <section class="panel" aria-labelledby="draft-entry">
-        <div class="panel-header">
-          <div>
-            <h2 id="draft-entry">Save a Draft Prompt</h2>
-            <p>Describe your idea, context, tone, or constraints.</p>
-          </div>
-          <span class="status" data-status="message">Ready</span>
-        </div>
-        <form id="draft-form">
-          <label for="draft-input" class="sr-only">Draft prompt</label>
-          <textarea
-            id="draft-input"
-            name="draft"
-            placeholder="Start with a rough prompt…"
-            rows="6"
-            required
+      <!-- Messages -->
+      <div class="messages-container" id="messages-container" style="display: none;">
+        <div class="messages" id="messages"></div>
+      </div>
+
+      <!-- Input Area (hidden when no session) -->
+      <div class="input-container" id="input-container" style="display: none;">
+        <form class="input-form" id="message-form">
+          <textarea 
+            id="message-input" 
+            placeholder="Type your prompt here... (Shift+Enter for new line)"
+            rows="1"
           ></textarea>
-          <div class="form-actions">
-            <button type="submit" class="primary" id="save-draft">
-              Save Draft
-            </button>
-            <button type="button" id="optimize-prompt" class="secondary">
-              Optimize &amp; Generate
-            </button>
-          </div>
+          <button type="submit" class="send-button" id="send-button" aria-label="Send message">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
         </form>
-      </section>
-
-      <section class="panel" aria-labelledby="principles-entry">
-        <div class="panel-header">
-          <div>
-            <h2 id="principles-entry">Prompt Principles</h2>
-            <p>Document the guidelines that shape each prompt. The assistant will ask for missing details that are required by these principles.</p>
-          </div>
-          <span class="status" data-principles-status>Idle</span>
-        </div>
-        <form id="principles-form">
-          <label for="principles-input" class="sr-only">Prompt principles</label>
-          <textarea
-            id="principles-input"
-            name="principles"
-            placeholder="One principle per line…"
-            rows="4"
-          ></textarea>
-          <div class="form-actions">
-            <button type="submit" class="primary">Save Principles</button>
-          </div>
-        </form>
-      </section>
-
-      <section class="panel" aria-labelledby="saved-drafts">
-        <div class="panel-header">
-          <h2 id="saved-drafts">Saved Drafts</h2>
-          <p>Click a draft to load it for refinement.</p>
-        </div>
-        <ul class="draft-list" data-drafts></ul>
-      </section>
-
-      <section class="panel" aria-labelledby="optimization-output">
-        <div class="panel-header">
-          <div>
-            <h2 id="optimization-output">Optimized Prompt</h2>
-            <p>OpenAI returns a structured prompt plus notes about what it improved.</p>
-          </div>
-          <span class="status" data-result-status>Idle</span>
-        </div>
-        <pre class="output" data-output>Use Optimize &amp; Generate to craft a final prompt.</pre>
-      </section>
+      </div>
     </main>
-    <script type="module" src="app.js"></script>
-  </body>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-backdrop" id="settings-modal" style="display: none;">
+    <div class="modal" role="dialog" aria-labelledby="settings-title">
+      <div class="modal-header">
+        <h2 id="settings-title">Prompt Principles</h2>
+        <button class="icon-button modal-close" id="modal-close" aria-label="Close">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-description">
+          Define principles that guide prompt optimization. The AI will use these when refining your prompts.
+        </p>
+        <textarea 
+          id="principles-input" 
+          placeholder="Enter one principle per line...&#10;Example:&#10;- Always specify the target audience&#10;- Include expected output format&#10;- Provide relevant context"
+          rows="12"
+        ></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="secondary-button" id="modal-cancel">Cancel</button>
+        <button class="primary-button" id="modal-save">Save Principles</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Folder Modal -->
+  <div class="modal-backdrop" id="folder-modal" style="display: none;">
+    <div class="modal small" role="dialog" aria-labelledby="folder-title">
+      <div class="modal-header">
+        <h2 id="folder-title">Create Folder</h2>
+        <button class="icon-button modal-close" id="folder-modal-close" aria-label="Close">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input 
+          type="text" 
+          id="folder-name-input" 
+          placeholder="Folder name"
+          class="text-input"
+        />
+      </div>
+      <div class="modal-footer">
+        <button class="secondary-button" id="folder-modal-cancel">Cancel</button>
+        <button class="primary-button" id="folder-modal-save">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save Prompt Modal -->
+  <div class="modal-backdrop" id="save-prompt-modal" style="display: none;">
+    <div class="modal small" role="dialog" aria-labelledby="save-prompt-title">
+      <div class="modal-header">
+        <h2 id="save-prompt-title">Save to Library</h2>
+        <button class="icon-button modal-close" id="save-prompt-modal-close" aria-label="Close">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input 
+          type="text" 
+          id="prompt-title-input" 
+          placeholder="Prompt title (optional)"
+          class="text-input"
+        />
+        <select id="folder-select" class="select-input">
+          <option value="">Select a folder...</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="secondary-button" id="save-prompt-modal-cancel">Cancel</button>
+        <button class="primary-button" id="save-prompt-modal-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
 </html>
