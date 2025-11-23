@@ -202,9 +202,18 @@
           placeholder="Prompt title (optional)"
           class="text-input"
         />
-        <select id="folder-select" class="select-input">
-          <option value="">Select a folder...</option>
-        </select>
+        <div class="folder-select-wrapper">
+          <select id="folder-select" class="select-input">
+            <option value="">Select a folder...</option>
+          </select>
+          <button type="button" class="create-folder-link" id="create-folder-link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Create New Folder
+          </button>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="secondary-button" id="save-prompt-modal-cancel">Cancel</button>

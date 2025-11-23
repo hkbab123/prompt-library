@@ -492,6 +492,13 @@ async function saveFolderModal() {
     await createFolder(name);
     closeFolderModal();
     showToast('Folder created!');
+    
+    // If we came from save prompt modal, reopen it
+    if (state.currentMessageToSave) {
+      setTimeout(() => {
+        openModal(elements.savePromptModal);
+      }, 100);
+    }
   } catch (err) {
     showToast('Error creating folder: ' + err.message, 'error');
   }
@@ -639,6 +646,17 @@ elements.folderModalSave.addEventListener('click', saveFolderModal);
 elements.savePromptModalClose.addEventListener('click', closeSavePromptModal);
 elements.savePromptModalCancel.addEventListener('click', closeSavePromptModal);
 elements.savePromptModalSave.addEventListener('click', saveSavePromptModal);
+
+// Create Folder Link in Save Prompt Modal
+const createFolderLink = document.getElementById('create-folder-link');
+if (createFolderLink) {
+  createFolderLink.addEventListener('click', () => {
+    // Close save prompt modal temporarily
+    closeSavePromptModal();
+    // Open folder creation modal
+    openFolderModal();
+  });
+}
 
 // Mobile Menu
 elements.mobileMenuButton.addEventListener('click', toggleSidebar);

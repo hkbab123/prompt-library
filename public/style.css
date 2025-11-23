@@ -721,6 +721,38 @@ body {
   margin-bottom: 1.25rem;
 }
 
+.folder-select-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.create-folder-link {
+  background: transparent;
+  border: 1px dashed var(--border-color);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  color: var(--accent-secondary);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+  font-family: var(--font-main);
+}
+
+.create-folder-link:hover {
+  background: rgba(94, 234, 212, 0.1);
+  border-color: var(--accent-secondary);
+  border-style: solid;
+}
+
+.create-folder-link svg {
+  flex-shrink: 0;
+}
+
 .modal-footer {
   padding: 2rem;
   border-top: 1px solid var(--border-color);
